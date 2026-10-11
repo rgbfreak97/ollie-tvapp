@@ -1,0 +1,260 @@
+package nl.crijns.ollieonair;
+
+import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.graphics.Color;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Toast;
+
+/**
+ * Ollie on Air op de tv: een schermvullende browser die het tv-scherm van de jukebox opent.
+ * - video's mogen meteen met geluid starten (geen "druk op OK voor geluid")
+ * - het scherm blijft aan (geen screensaver)
+ * - nummers die alleen op YouTube zelf mogen, gaan naar de YouTube-app
+ * - OK twee seconden ingedrukt houden: instellingen
+ */
+public class MainActivity extends Activity {
+
+    private static final String YT_TV_APP = "com.google.android.youtube.tv";
+    private static final String ERROR_PAGE = "file:///android_asset/offline.html";
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private WebView web;
+    private String url;
+    private boolean showingError = false;
+    private boolean wentToYouTube = false;
+    private long lastBackAt = 0;
+
+    private final Runnable openSettingsRunnable = this::openSettings;
+    private final Runnable retryRunnable = () -> {
+        if (showingError) load();
+    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        url = Prefs.url(this);
+        if (url == null) {
+            startActivity(new Intent(this, SettingsActivity.class));
+            finish();
+            return;
+        }
+
+        WebView.setWebContentsDebuggingEnabled(true);
+        web = new WebView(this);
+        web.setBackgroundColor(Color.BLACK);
+        web.setFocusable(true);
+        web.setFocusableInTouchMode(true);
+        setContentView(web);
+
+        WebSettings s = web.getSettings();
+        s.setJavaScriptEnabled(true);
+        s.setDomStorageEnabled(true);
+        s.setMediaPlaybackRequiresUserGesture(false);
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        s.setUseWideViewPort(true);
+        s.setLoadWithOverviewMode(true);
+        s.setJavaScriptCanOpenWindowsAutomatically(true);
+        s.setSupportMultipleWindows(false);
+        s.setUserAgentString(s.getUserAgentString() + " OllieOnAirTV/1.0");
+
+        web.addJavascriptInterface(new Bridge(), "OllieTV");
+        web.setWebChromeClient(new WebChromeClient());
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                return handleUrl(request.getUrl());
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                if (request.isForMainFrame() && !request.getUrl().toString().startsWith(ERROR_PAGE)) showError();
+            }
+        });
+
+        load();
+        web.requestFocus();
+        hideSystemUi();
+    }
+
+    private void load() {
+        showingError = false;
+        handler.removeCallbacks(retryRunnable);
+        web.loadUrl(url);
+    }
+
+    private void showError() {
+        showingError = true;
+        web.loadUrl(ERROR_PAGE + "#" + Uri.encode(url));
+        handler.removeCallbacks(retryRunnable);
+        handler.postDelayed(retryRunnable, 15000);
+    }
+
+    /** YouTube-links gaan naar de YouTube-app; al het andere blijft in de app. */
+    private boolean handleUrl(Uri u) {
+        String host = u.getHost() == null ? "" : u.getHost();
+        if (host.endsWith("youtube.com") || host.equals("youtu.be")) {
+            String id = u.getQueryParameter("v");
+            if (id == null && host.equals("youtu.be") && u.getPath() != null) id = u.getPath().replace("/", "");
+            if (id == null && u.getPath() != null && u.getPath().startsWith("/embed/")) id = u.getPath().substring(7);
+            if (id != null && id.matches("[A-Za-z0-9_-]{11}")) {
+                openYouTube(id);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void openYouTube(String id) {
+        wentToYouTube = true;
+        Intent app = new Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:" + id));
+        app.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        app.setPackage(YT_TV_APP);
+        try {
+            startActivity(app);
+            return;
+        } catch (ActivityNotFoundException ignored) {
+            // geen YouTube voor tv: probeer een andere YouTube-app of browser
+        }
+        try {
+            Intent any = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=" + id));
+            any.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(any);
+        } catch (ActivityNotFoundException e) {
+            wentToYouTube = false;
+            Toast.makeText(this, "Geen YouTube-app gevonden op deze tv", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void openSettings() {
+        startActivity(new Intent(this, SettingsActivity.class));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        hideSystemUi();
+        if (web == null) return;
+        web.onResume();
+        String saved = Prefs.url(this);
+        if (saved != null && !saved.equals(url)) {
+            url = saved;
+            load();
+            return;
+        }
+        if (wentToYouTube) {
+            wentToYouTube = false;
+            web.evaluateJavascript("window.ollieTvResumed && window.ollieTvResumed()", null);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        if (web != null) web.onPause();
+        super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
+        if (web != null) web.destroy();
+        super.onDestroy();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) hideSystemUi();
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int code = event.getKeyCode();
+        // OK lang ingedrukt houden: instellingen
+        if (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                handler.postDelayed(openSettingsRunnable, 2000);
+            } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                handler.removeCallbacks(openSettingsRunnable);
+            }
+        }
+        if ((code == KeyEvent.KEYCODE_MENU || code == KeyEvent.KEYCODE_SETTINGS) && event.getAction() == KeyEvent.ACTION_UP) {
+            openSettings();
+            return true;
+        }
+        if (code == KeyEvent.KEYCODE_BACK) {
+            if (event.getAction() == KeyEvent.ACTION_UP) onBackKey();
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    /** Terug: eerst terug naar het tv-scherm (bijv. vanaf /admin), anders twee keer drukken om af te sluiten. */
+    private void onBackKey() {
+        if (web != null && !showingError) {
+            String current = web.getUrl();
+            if (current != null && !current.equals(url) && web.canGoBack()) {
+                web.goBack();
+                return;
+            }
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastBackAt < 2500) {
+            finish();
+        } else {
+            lastBackAt = now;
+            Toast.makeText(this, "Druk nog een keer op Terug om Ollie on Air te sluiten", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void hideSystemUi() {
+        getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                        | View.SYSTEM_UI_FLAG_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                        | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                        | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                        | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+    }
+
+    /** Wat de webpagina van de jukebox aan de app kan vragen (window.OllieTV). */
+    private class Bridge {
+        @JavascriptInterface
+        public void openYouTube(String id) {
+            if (id == null || !id.matches("[A-Za-z0-9_-]{11}")) return;
+            handler.post(() -> MainActivity.this.openYouTube(id));
+        }
+
+        @JavascriptInterface
+        public void openSettings() {
+            handler.post(MainActivity.this::openSettings);
+        }
+
+        @JavascriptInterface
+        public void reload() {
+            handler.post(MainActivity.this::load);
+        }
+
+        @JavascriptInterface
+        public String version() {
+            return "1.0";
+        }
+    }
+}

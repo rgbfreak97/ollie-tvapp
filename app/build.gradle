@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'nl.crijns.ollieonair'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'nl.crijns.ollieonair'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Vaste sleutel, zodat een nieuwere versie gewoon over de oude heen installeert
+    signingConfigs {
+        ollie {
+            storeFile file('ollie.keystore')
+            storePassword 'ollieonair'
+            keyAlias 'ollie'
+            keyPassword 'ollieonair'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.ollie
+        }
+        debug {
+            signingConfig signingConfigs.ollie
+        }
+    }
+
+    // geen Play Store-keuring nodig: bouwen niet laten stoppen op lint-waarschuwingen
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

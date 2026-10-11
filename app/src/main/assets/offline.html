@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  html,body{margin:0;height:100%;background:#0E1A17;color:#FFF1DE;font-family:sans-serif}
+  body{display:flex;align-items:center;justify-content:center;text-align:center}
+  h1{color:#EE9447;font-size:6vh;margin:0 0 2vh}
+  p{font-size:3vh;opacity:.8;margin:1vh 0}
+  code{background:rgba(255,255,255,.08);padding:.4vh 1vh;border-radius:1vh}
+  button{font:inherit;font-size:3vh;margin:4vh 1.5vh 0;padding:1.8vh 4vh;border-radius:6vh;border:0;background:#2a3a35;color:#FFF1DE}
+  button:focus{background:#C9541F;outline:.4vh solid #fff}
+</style></head>
+<body><div>
+  <h1>Ollie on Air is niet bereikbaar</h1>
+  <p>Kan <code id="u"></code> niet openen.</p>
+  <p>Staat de jukebox-server aan? We proberen het over <b id="c">15</b> seconden opnieuw.</p>
+  <button id="retry" autofocus>Opnieuw proberen</button><button id="set">Adres wijzigen</button>
+</div>
+<script>
+  document.getElementById('u').textContent = decodeURIComponent(location.hash.slice(1));
+  var n = 15; setInterval(function () { if (n > 0) document.getElementById('c').textContent = --n; }, 1000);
+  document.getElementById('retry').onclick = function () { window.OllieTV && OllieTV.reload(); };
+  document.getElementById('set').onclick = function () { window.OllieTV && OllieTV.openSettings(); };
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { var b = document.activeElement.id === 'retry' ? 'set' : 'retry'; document.getElementById(b).focus(); e.preventDefault(); }
+  });
+  setTimeout(function () { document.getElementById('retry').focus(); }, 100);
+</script>
+</body></html>
