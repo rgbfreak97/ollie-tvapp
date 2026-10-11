@@ -124,23 +124,32 @@ public class MainActivity extends Activity {
 
     private void openYouTube(String id) {
         wentToYouTube = true;
-        Intent app = new Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:" + id));
-        app.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        app.setPackage(YT_TV_APP);
-        try {
-            startActivity(app);
-            return;
-        } catch (ActivityNotFoundException ignored) {
-            // geen YouTube voor tv: probeer een andere YouTube-app of browser
+        String watch = "https://www.youtube.com/watch?v=" + id;
+        // De YouTube-app voor tv start een video het betrouwbaarst met een gewone watch-link.
+        Intent[] tries = new Intent[] {
+                yt(watch, YT_TV_APP),
+                yt("vnd.youtube:" + id, YT_TV_APP),
+                yt(watch, null)
+        };
+        for (Intent i : tries) {
+            try {
+                startActivity(i);
+                return;
+            } catch (ActivityNotFoundException ignored) {
+                // volgende manier proberen
+            }
         }
-        try {
-            Intent any = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=" + id));
-            any.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(any);
-        } catch (ActivityNotFoundException e) {
-            wentToYouTube = false;
-            Toast.makeText(this, "Geen YouTube-app gevonden op deze tv", Toast.LENGTH_LONG).show();
-        }
+        wentToYouTube = false;
+        Toast.makeText(this, "Geen YouTube-app gevonden op deze tv", Toast.LENGTH_LONG).show();
+    }
+
+    private static Intent yt(String uri, String pkg) {
+        Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        i.putExtra("force_fullscreen", true);
+        i.putExtra("finish_on_ended", true);
+        if (pkg != null) i.setPackage(pkg);
+        return i;
     }
 
     private void openSettings() {
