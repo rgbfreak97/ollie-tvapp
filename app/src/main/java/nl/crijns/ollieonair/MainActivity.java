@@ -37,6 +37,13 @@ public class MainActivity extends Activity {
     private String url;
     private boolean showingError = false;
     private boolean wentToYouTube = false;
+    private boolean autoReturned = false;
+
+    /** Na afloop van de karaokevideo de jukebox vanzelf terughalen (kan dankzij "Weergeven over andere apps"). */
+    private final Runnable returnFromYouTube = () -> {
+        autoReturned = true;
+        AutoStart.bringToFront(getApplicationContext());
+    };
     private long lastBackAt = 0;
 
     private final Runnable openSettingsRunnable = this::openSettings;
@@ -123,7 +130,15 @@ public class MainActivity extends Activity {
     }
 
     private void openYouTube(String id) {
+        openYouTube(id, 0);
+    }
+
+    /** @param seconds speelduur van de video; 0 = onbekend, dan niet vanzelf terugkomen */
+    private void openYouTube(String id, int seconds) {
         wentToYouTube = true;
+        autoReturned = false;
+        handler.removeCallbacks(returnFromYouTube);
+        if (seconds > 0) handler.postDelayed(returnFromYouTube, (seconds + 6) * 1000L);
         String watch = "https://www.youtube.com/watch?v=" + id;
         // De YouTube-app voor tv start een video het betrouwbaarst met een gewone watch-link.
         Intent[] tries = new Intent[] {
@@ -140,6 +155,7 @@ public class MainActivity extends Activity {
             }
         }
         wentToYouTube = false;
+        handler.removeCallbacks(returnFromYouTube);
         Toast.makeText(this, "Geen YouTube-app gevonden op deze tv", Toast.LENGTH_LONG).show();
     }
 
@@ -168,9 +184,12 @@ public class MainActivity extends Activity {
             load();
             return;
         }
+        handler.removeCallbacks(returnFromYouTube);
         if (wentToYouTube) {
             wentToYouTube = false;
-            web.evaluateJavascript("window.ollieTvResumed && window.ollieTvResumed()", null);
+            boolean auto = autoReturned;
+            autoReturned = false;
+            web.evaluateJavascript("window.ollieTvResumed && window.ollieTvResumed(" + auto + ")", null);
         }
     }
 
@@ -250,6 +269,13 @@ public class MainActivity extends Activity {
         public void openYouTube(String id) {
             if (id == null || !id.matches("[A-Za-z0-9_-]{11}")) return;
             handler.post(() -> MainActivity.this.openYouTube(id));
+        }
+
+        @JavascriptInterface
+        public void openYouTubeFor(String id, int seconds) {
+            if (id == null || !id.matches("[A-Za-z0-9_-]{11}")) return;
+            int s = Math.max(0, Math.min(seconds, 60 * 30));
+            handler.post(() -> MainActivity.this.openYouTube(id, s));
         }
 
         @JavascriptInterface

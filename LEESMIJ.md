@@ -5,7 +5,7 @@ Een eigen app die het tv-scherm van de jukebox schermvullend opent. In plaats va
 - **Geen "Druk op OK voor geluid"**: video's starten meteen met geluid.
 - **Geen screensaver** zolang de app openstaat.
 - **Eigen icoon** tussen je apps, geen adresbalk of cursor.
-- **Nummers "via YouTube"** openen in de echte YouTube-app op je tv (ingelogd met Premium = geen reclame). Klaar met zingen? Druk op **Terug**, en daarna op **OK** voor de volgende zanger.
+- **Nummers "via YouTube"** openen in de echte YouTube-app op je tv (ingelogd met Premium = geen reclame). Na afloop van de video komt de jukebox vanzelf terug en gaat door naar de volgende zanger (daarvoor is de toestemming "Weergeven over andere apps" nodig, zie hieronder). Eerder klaar? Druk op **Terug** en daarna op **OK**.
 
 ## 1. De app laten bouwen (gratis, via GitHub)
 

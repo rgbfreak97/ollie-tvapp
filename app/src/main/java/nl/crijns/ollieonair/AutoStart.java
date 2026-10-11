@@ -33,6 +33,18 @@ final class AutoStart {
         }
     }
 
+    /** Haalt de jukebox naar voren, ook als automatisch openen bij tv-aan uit staat. */
+    static void bringToFront(Context c) {
+        if (Prefs.url(c) == null) return;
+        Intent i = new Intent(c, MainActivity.class);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        try {
+            c.startActivity(i);
+        } catch (Exception ignored) {
+            // zonder toestemming blokkeert Android dit; dan blijft Terug drukken nodig
+        }
+    }
+
     /** Opent het tv-scherm (of haalt het naar voren). */
     static void launch(Context c) {
         if (Prefs.url(c) == null || !Prefs.autostart(c)) return;
