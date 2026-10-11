@@ -1,7 +1,10 @@
 package nl.crijns.ollieonair;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.net.Uri;
+import android.provider.Settings;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -12,6 +15,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -21,6 +25,9 @@ import android.widget.Toast;
 public class SettingsActivity extends Activity {
 
     private EditText input;
+    private TextView permStatus;
+    private Button permButton;
+    private CheckBox auto;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +92,40 @@ public class SettingsActivity extends Activity {
         lp.topMargin = dp(24);
         root.addView(go, lp);
 
+        // automatisch openen als de tv aangaat
+        auto = new CheckBox(this);
+        auto.setText("Automatisch openen als de tv aangaat");
+        auto.setTextColor(Color.WHITE);
+        auto.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        auto.setChecked(Prefs.autostart(this));
+        auto.setPadding(dp(8), dp(8), dp(8), dp(8));
+        auto.setOnCheckedChangeListener((b, on) -> {
+            Prefs.setAutostart(this, on);
+            AutoStart.ensureService(this);
+            refreshPermission();
+        });
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        alp.topMargin = dp(28);
+        root.addView(auto, alp);
+
+        permStatus = new TextView(this);
+        permStatus.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        permStatus.setLineSpacing(0, 1.2f);
+        permStatus.setPadding(dp(8), dp(4), 0, 0);
+        root.addView(permStatus);
+
+        permButton = new Button(this);
+        permButton.setText("Toestemming geven");
+        permButton.setAllCaps(false);
+        permButton.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        permButton.setTextColor(Color.WHITE);
+        permButton.setBackground(box("#2A3A35", "#EE9447"));
+        permButton.setPadding(dp(22), dp(8), dp(22), dp(8));
+        permButton.setOnClickListener(v -> askPermission());
+        LinearLayout.LayoutParams plp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        plp.topMargin = dp(8);
+        root.addView(permButton, plp);
+
         TextView tip = new TextView(this);
         tip.setText("Tip: houd OK op de afstandsbediening 2 seconden ingedrukt om hier later terug te komen.");
         tip.setTextColor(Color.parseColor("#99FFF1DE"));
@@ -94,6 +135,41 @@ public class SettingsActivity extends Activity {
 
         setContentView(root);
         input.requestFocus();
+        refreshPermission();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (permStatus != null) refreshPermission();
+    }
+
+    private void refreshPermission() {
+        boolean on = auto.isChecked();
+        boolean ok = AutoStart.allowed(this);
+        permStatus.setVisibility(on ? android.view.View.VISIBLE : android.view.View.GONE);
+        permButton.setVisibility(on && !ok ? android.view.View.VISIBLE : android.view.View.GONE);
+        if (ok) {
+            permStatus.setText("✓ Toestemming staat aan: de jukebox opent vanzelf na opstarten en als de tv uit slaapstand komt.");
+            permStatus.setTextColor(Color.parseColor("#8FE3B0"));
+        } else {
+            permStatus.setText("Nog nodig: de toestemming \"Weergeven over andere apps\". Zonder die toestemming mag Android de app niet vanzelf openen.\n"
+                    + "Lukt het niet met de knop, zie dan de LEESMIJ (één opdracht vanaf je pc).");
+            permStatus.setTextColor(Color.parseColor("#FFC27A"));
+        }
+    }
+
+    private void askPermission() {
+        Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+        try {
+            startActivity(i);
+        } catch (ActivityNotFoundException e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+            } catch (ActivityNotFoundException e2) {
+                Toast.makeText(this, "Deze tv heeft daar geen instellingenscherm voor. Volg de stap met de pc uit de LEESMIJ.", Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     private void save() {

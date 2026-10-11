@@ -8,6 +8,7 @@ import android.net.Uri;
 final class Prefs {
     private static final String FILE = "ollie";
     private static final String KEY_URL = "url";
+    private static final String KEY_AUTO = "autostart";
 
     private Prefs() {}
 
@@ -17,6 +18,14 @@ final class Prefs {
 
     static void setUrl(Context c, String url) {
         sp(c).edit().putString(KEY_URL, url).apply();
+    }
+
+    static boolean autostart(Context c) {
+        return sp(c).getBoolean(KEY_AUTO, true);
+    }
+
+    static void setAutostart(Context c, boolean on) {
+        sp(c).edit().putBoolean(KEY_AUTO, on).apply();
     }
 
     /**

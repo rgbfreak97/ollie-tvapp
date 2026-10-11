@@ -37,6 +37,23 @@ Liever zonder GitHub? Installeer Android Studio, kies **Open** en selecteer deze
 
 De app vraagt het adres van de jukebox. Typ wat er in het servervenster staat, bijvoorbeeld `192.168.1.20:8888` (de app zet er zelf `http://` en `/tv` bij). Heb je later een eigen domein: typ `jouwdomein.nl`.
 
+## Automatisch openen als de tv aangaat
+
+Staat standaard aan (instellingen: OK 2 seconden ingedrukt houden). De app opent dan vanzelf na het opstarten van de Chromecast én als die uit slaapstand komt (tv aan).
+
+Android vraagt daarvoor één keer de toestemming **"Weergeven over andere apps"**. In de instellingen van de app zie je of die aanstaat (groen vinkje). Staat hij nog niet aan:
+
+1. Probeer eerst de knop **Toestemming geven** in de instellingen van de app en zet Ollie on Air daar aan.
+2. Heeft je Chromecast dat scherm niet (veel Google TV-versies verbergen het), dan zet je het eenmalig aan vanaf je pc:
+   1. Op de tv: Instellingen → Systeem → Ontwikkelaarsopties → zet **USB-foutopsporing** aan.
+   2. Zoek het IP-adres van de tv: Instellingen → Netwerk en internet → je wifi-netwerk.
+   3. Download op je pc **SDK Platform-Tools** voor Windows van developer.android.com (zoek op "platform-tools"), pak het uit en open in die map een opdrachtvenster (in de adresbalk van Verkenner `cmd` typen en Enter).
+   4. Typ `adb connect 192.168.1.30` (met het IP-adres van je tv). Op de tv verschijnt een vraag: kies **Altijd toestaan** en **OK**.
+   5. Typ `adb shell appops set nl.crijns.ollieonair SYSTEM_ALERT_WINDOW allow`
+   6. Klaar. In de app-instellingen staat nu een groen vinkje. USB-foutopsporing mag je daarna weer uitzetten.
+
+Let op: de app opent dan elke keer als de tv aangaat, ook als je eigenlijk Netflix wilde kijken. Even op Home drukken en je bent er weer uit. Zet het vinkje uit als je dat niet wilt.
+
 ## Bediening
 
 - **OK 2 seconden ingedrukt houden:** instellingen (ander adres).
