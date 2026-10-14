@@ -22,6 +22,13 @@ public class WakeService extends Service {
     private static final String CHANNEL = "ollie_autostart";
     private final Handler handler = new Handler(Looper.getMainLooper());
     private BroadcastReceiver screenOn;
+    private final Runnable updateCheck = new Runnable() {
+        @Override
+        public void run() {
+            Updater.checkIfDue(WakeService.this);
+            handler.postDelayed(this, 60L * 60 * 1000); // elk uur kijken of de 12 uur om zijn
+        }
+    };
 
     @Override
     public void onCreate() {
@@ -47,11 +54,11 @@ public class WakeService extends Service {
         screenOn = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                handler.removeCallbacksAndMessages(null);
                 handler.postDelayed(() -> AutoStart.launch(WakeService.this), 1500);
             }
         };
         registerReceiver(screenOn, new IntentFilter(Intent.ACTION_SCREEN_ON));
+        handler.postDelayed(updateCheck, 5L * 60 * 1000);
     }
 
     @Override

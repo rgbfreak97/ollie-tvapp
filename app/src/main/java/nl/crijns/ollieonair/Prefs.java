@@ -45,7 +45,7 @@ final class Prefs {
         if (u.getHost() == null || u.getHost().isEmpty()) return null;
         String path = u.getPath();
         if (path == null || path.isEmpty() || path.equals("/")) {
-            s = s.replaceAll("/+$", "") + "/tv";
+            s = u.buildUpon().path("/tv").build().toString(); // ook goed met ?key=... erachter
         }
         return s;
     }

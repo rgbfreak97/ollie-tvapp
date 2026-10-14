@@ -54,6 +54,20 @@ Android vraagt daarvoor één keer de toestemming **"Weergeven over andere apps"
 
 Let op: de app opent dan elke keer als de tv aangaat, ook als je eigenlijk Netflix wilde kijken. Even op Home drukken en je bent er weer uit. Zet het vinkje uit als je dat niet wilt.
 
+## Automatisch bijwerken
+
+Vanaf deze versie werkt de app zichzelf bij. Hij kijkt bij het openen en elke 12 uur op GitHub of er een nieuwere versie is, downloadt die en installeert hem. Daarna opent de jukebox vanzelf weer. Een nieuwe versie maken is dus alleen nog: de bestanden op GitHub zetten en wachten op het groene vinkje. Het versienummer telt GitHub zelf op.
+
+Eenmalig nodig:
+1. Installeer **deze** versie nog één keer zelf (Downloader of `adb install -r ollie-on-air.apk`).
+2. Geef de app toestemming om updates te installeren: houd OK 2 seconden ingedrukt en kies **Toestemming voor updates**, of vanaf je pc:
+   `adb shell appops set nl.crijns.ollieonair REQUEST_INSTALL_PACKAGES allow`
+3. De eerste update vraagt Android nog om bevestiging ("Wil je deze app updaten?" → **Installeren**). Daarna mag de app zichzelf meestal zonder vraag bijwerken.
+
+In de instellingen zie je het versienummer en kun je met **Zoeken naar update** meteen kijken.
+
+Let op: het tv-scherm, de thema's en de bediening zitten in de jukebox op de server. Die werken al vanzelf bij, daarvoor hoeft de app niet bijgewerkt te worden.
+
 ## Bediening
 
 - **OK 2 seconden ingedrukt houden:** instellingen (ander adres).

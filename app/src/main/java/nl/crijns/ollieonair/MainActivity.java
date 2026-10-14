@@ -64,6 +64,7 @@ public class MainActivity extends Activity {
         }
 
         AutoStart.ensureService(this);
+        Updater.checkIfDue(this);
         WebView.setWebContentsDebuggingEnabled(true);
         web = new WebView(this);
         web.setBackgroundColor(Color.BLACK);

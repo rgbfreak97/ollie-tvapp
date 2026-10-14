@@ -28,6 +28,8 @@ public class SettingsActivity extends Activity {
     private TextView permStatus;
     private Button permButton;
     private CheckBox auto;
+    private Button updPerm;
+    private TextView updStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -126,6 +128,42 @@ public class SettingsActivity extends Activity {
         plp.topMargin = dp(8);
         root.addView(permButton, plp);
 
+        // updates
+        LinearLayout upd = new LinearLayout(this);
+        upd.setOrientation(LinearLayout.HORIZONTAL);
+        upd.setGravity(Gravity.CENTER_VERTICAL);
+        Button check = new Button(this);
+        check.setText("Zoeken naar update");
+        check.setAllCaps(false);
+        check.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        check.setTextColor(Color.WHITE);
+        check.setBackground(box("#2A3A35", "#EE9447"));
+        check.setPadding(dp(22), dp(8), dp(22), dp(8));
+        check.setOnClickListener(v -> {
+            updStatus.setText("Bezig met zoeken…");
+            Updater.check(this, msg -> updStatus.setText(msg));
+        });
+        upd.addView(check);
+        updPerm = new Button(this);
+        updPerm.setText("Toestemming voor updates");
+        updPerm.setAllCaps(false);
+        updPerm.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        updPerm.setTextColor(Color.WHITE);
+        updPerm.setBackground(box("#2A3A35", "#EE9447"));
+        updPerm.setPadding(dp(22), dp(8), dp(22), dp(8));
+        updPerm.setOnClickListener(v -> askInstallPermission());
+        LinearLayout.LayoutParams ulp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        ulp.leftMargin = dp(12);
+        upd.addView(updPerm, ulp);
+        LinearLayout.LayoutParams ulp2 = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        ulp2.topMargin = dp(24);
+        root.addView(upd, ulp2);
+        updStatus = new TextView(this);
+        updStatus.setTextColor(Color.parseColor("#CCFFF1DE"));
+        updStatus.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        updStatus.setPadding(dp(8), dp(6), 0, 0);
+        root.addView(updStatus);
+
         TextView tip = new TextView(this);
         tip.setText("Tip: houd OK op de afstandsbediening 2 seconden ingedrukt om hier later terug te komen.");
         tip.setTextColor(Color.parseColor("#99FFF1DE"));
@@ -136,12 +174,32 @@ public class SettingsActivity extends Activity {
         setContentView(root);
         input.requestFocus();
         refreshPermission();
+        refreshUpdate();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         if (permStatus != null) refreshPermission();
+        if (updStatus != null) refreshUpdate();
+    }
+
+    private void refreshUpdate() {
+        boolean ok = Updater.allowed(this);
+        updPerm.setVisibility(ok || !Updater.available() ? android.view.View.GONE : android.view.View.VISIBLE);
+        if (updStatus.getText().length() == 0 || updStatus.getText().toString().startsWith("Versie")) {
+            updStatus.setText("Versie " + BuildConfig.VERSION_NAME
+                    + (!Updater.available() ? " · automatisch bijwerken werkt alleen met de GitHub-versie"
+                    : ok ? " · zoekt zelf elke 12 uur naar updates" : " · geef toestemming om updates te installeren"));
+        }
+    }
+
+    private void askInstallPermission() {
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getPackageName())));
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "Gebruik de opdracht met adb uit de LEESMIJ om updates toe te staan.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void refreshPermission() {
